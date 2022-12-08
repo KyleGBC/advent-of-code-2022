@@ -1,9 +1,28 @@
+fn visible_trees<'a>(mut it: impl Iterator<Item = &'a u8>, tree_height: u8) -> (usize, bool) {
+    let mut total = 0;
+    let mut seen_from_edge = true;
+    while let Some(tree) = it.next() {
+        if *tree < tree_height {
+            total += 1;
+        }
+        else if *tree == tree_height {
+            total += 1;
+            seen_from_edge = false;
+            break;
+        }
+        else{
+            seen_from_edge = false;
+            break;
+        }
+    } 
+    (total, seen_from_edge)
+} 
 fn main() {
+    let now = std::time::Instant::now();
     const GRID_SIZE: usize = 99;
     let mut grid = [[0_u8; GRID_SIZE]; GRID_SIZE];
     let input = std::fs::read_to_string("input.txt").expect("Couldn't read in file");
-    let mut part1 = 0_usize;
-    let mut part2 = 0_usize;
+    let (mut part1, mut part2) = (0_usize, 0_usize);
 
     for (y, line) in input.lines().enumerate() {
         for(x, char) in line.chars().enumerate() {
@@ -14,23 +33,21 @@ fn main() {
     for x in 0..GRID_SIZE {
         for y in 0..GRID_SIZE {
             let tree_height = grid[x][y];
+    
+            let (above_trees, above_edge) = visible_trees(grid[x][..y].iter().rev(), tree_height);
+            let (below_trees, below_edge) = visible_trees(grid[x][y+1..].iter(), tree_height);
+            let (left_trees, left_edge) = visible_trees(grid[..x].iter().rev().map(|c| &c[y]), tree_height);
+            let (right_trees, right_edge) = visible_trees(grid[x+1..].iter().map(|c| &c[y]), tree_height);
 
-            let above = &grid[x][..y].iter().all(|h| h < &tree_height);
-            let below = &grid[x][y+1..GRID_SIZE].iter().all(|h| h < &tree_height);
-            let left = &grid[..x].iter().all(|c| c[y] < tree_height);
-            let right = &grid[x+1..GRID_SIZE].iter().all(|c| c[y] < tree_height);
-            part1 += (*above || *below || *left || *right) as usize;
-
-            let above_distance = &grid[x][..y].iter().rev().position(|h| h < &tree_height).unwrap_or(y);
-            let below_distance = &grid[x][y+1..GRID_SIZE].iter().position(|h| h < &tree_height).unwrap_or(GRID_SIZE - y);
-            let left_distance = &grid[..x].iter().rev().position(|c| c[y] < tree_height).unwrap_or(x);
-            let right_distance = &grid[x+1..GRID_SIZE].iter().position(|c| c[y] < tree_height).unwrap_or(GRID_SIZE - x);
-            let scenic = *right_distance * *left_distance * *above_distance * *below_distance;
+            let scenic = above_trees * below_trees * left_trees * right_trees;
             if scenic > part2 {
                 part2 = scenic;
             }
-
+            if above_edge || below_edge || left_edge || right_edge {
+                part1 += 1;
+            }
         }
     }
     println!("{part1}, {part2}");
+    println!("Finished in {:#?}", now.elapsed())
 }
