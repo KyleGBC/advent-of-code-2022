@@ -1,67 +1,68 @@
-use std::{rc::Rc, cell::RefCell};
-type NodeLink<'a> = Rc<RefCell<Node<'a>>>;
+use std::str::Lines;
 
-#[derive(Clone)]
-struct Node<'a> {
-    pub parent: Option<NodeLink<'a>>,
-    pub children: Vec<NodeLink<'a>>,
-    pub name: &'a str,
+struct Node {
+    pub children: Vec<Node>,
+    pub name: String,
     pub size: Option<usize>,
 }
 
-impl<'a> Node<'a> {
-    fn size(&self, mut prefix: String) -> usize {
+impl Node {
+    fn from_lines(lines: &mut Lines) -> Node {
+        let mut new_node = Node{ children: Vec::new(), name: "/".to_string(), size: None};
+
+        while let Some(line) = lines.next() {
+            if line.starts_with("$") {
+                let line = &line[2..];
+                if let Some((cmd, name)) = line.split_once(' ') {
+                    match(cmd, name) {
+                        ("cd", "..") => return new_node,
+                        ("cd", "/") => {},
+                        ("cd", name) => {
+                            let mut subnode = Node::from_lines(lines);
+                            subnode.name = name.to_string();
+                            new_node.children.push(subnode);
+
+                        }
+                        _ => {}
+                    }   
+                }
+            } 
+            else {
+                let (first, name) = line.split_once(' ').unwrap();
+                if let Ok(size) = first.parse::<usize>() {
+                    new_node.children.push(Node{children: Vec::new(), name: name.to_string(), size: Some(size)})
+                }
+            }
+        }
+        new_node
+    }
+
+    fn size(&self, mut prefix: String, node_sizes: &mut Vec<usize>) -> usize {
         if let Some(s) = self.size {
-            println!("{}{} with size {} in dir {}", prefix, self.name, s, self.parent.as_ref().unwrap().try_borrow().unwrap().name);
+            //println!("{}{} (file, size = {})", prefix, self.name, s);
             s
         }
         else {
-            println!("{}Dir {}:", prefix, self.name);
-            let mut total = 0;
-            prefix.push('\t');
-            self.children.iter().for_each(|c| {
-                total += c.try_borrow().unwrap().size(prefix.clone());
-            });
-            println!("{prefix}Totaling {total}");
-            total
-        }
-        
+            //println!("{}{} (dir)", prefix, self.name);
+            //prefix.insert(0, '\t');
+            let s = self.children.iter().fold(0, |sum, n| sum + n.size(prefix.clone(), node_sizes));
+            node_sizes.push(s);
+            s
+        }   
     }
 }
 
 fn main() {
+    let now = std::time::Instant::now();
     let input = std::fs::read_to_string("input.txt").expect("Couldn't open file");
-    let root = Rc::new(RefCell::new(Node{parent: None, children: Vec::new(), name: "/", size: None}));
-    let mut current_node: NodeLink = Rc::clone(&root);
-    
-    for line in input.lines() {
-        if line.starts_with("$") {
-            let line = &line[2..];
-            if let Some((command, name)) = line.split_once(' ') {
-                match command {
-                    "cd" => match name {
-                        "/" => current_node = Rc::clone(&root),
-                        ".." => {
-                            let parent = current_node.try_borrow().unwrap().clone().parent;
-                            current_node = Rc::clone(&parent.expect("Current node shouldn't be root"));
-                        }
-                        _ => {
-                            let children = current_node.try_borrow().unwrap().clone().children;
-                            let l = children.iter().find(|c| c.try_borrow().unwrap().name == name).unwrap();
-                            current_node = Rc::clone(l);
-                        }
-                    }
-                    _ => unreachable!("There should always be a command after a $")
-                }
-            }
-        }   
-        else {
-            let(first, name) = line.split_once(' ').unwrap();
-            let size = if first == "dir" { None } else { Some(first.parse::<usize>().unwrap()) };
+    let mut lines = input.lines();
 
-            let new_node = Node {parent: Some(Rc::clone(&current_node)), size, name, children: Vec::new()};
-            current_node.borrow_mut().children.push(Rc::new(RefCell::new(new_node)));
-        }
-    }
-    root.try_borrow().unwrap().size(String::new());
+    let root = Node::from_lines(&mut lines);
+    let mut dir_sizes = Vec::with_capacity(100);
+    let used_space = root.size(String::from(" - "), &mut dir_sizes);
+
+    let part1: usize = dir_sizes.iter().filter(|s| **s < 100000_usize).sum();
+    let part2 = dir_sizes.iter().filter(|s| used_space - **s <= 40_000_000_usize).min().unwrap();
+
+    println!("Part 1: {part1}, Part 2: {part2}, {} micros", now.elapsed().as_micros());
 }
