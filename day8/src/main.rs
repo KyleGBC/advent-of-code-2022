@@ -2,15 +2,8 @@ fn visible_trees<'a>(mut it: impl Iterator<Item = &'a u8>, tree_height: u8) -> (
     let mut total = 0;
     let mut seen_from_edge = true;
     while let Some(tree) = it.next() {
-        if *tree < tree_height {
-            total += 1;
-        }
-        else if *tree == tree_height {
-            total += 1;
-            seen_from_edge = false;
-            break;
-        }
-        else{
+        total += 1;
+        if *tree >= tree_height {
             seen_from_edge = false;
             break;
         }
@@ -24,12 +17,15 @@ fn main() {
     let input = std::fs::read_to_string("input.txt").expect("Couldn't read in file");
     let (mut part1, mut part2) = (0_usize, 0_usize);
 
+    
+
     for (y, line) in input.lines().enumerate() {
         for(x, char) in line.chars().enumerate() {
             grid[x][y] = char as u8 - 48;
         }
     }
-
+    
+    
     for x in 0..GRID_SIZE {
         for y in 0..GRID_SIZE {
             let tree_height = grid[x][y];
@@ -48,6 +44,5 @@ fn main() {
             }
         }
     }
-    println!("{part1}, {part2}");
-    println!("Finished in {:#?}", now.elapsed())
+    println!("{} and {}, in {:#?}", part1, part2, now.elapsed());
 }
