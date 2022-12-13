@@ -1,1 +1,0 @@
-C:\Users\kyler\Documents\RustProjects\AdventOfCode\day11\target\debug\day11.exe: C:\Users\kyler\Documents\RustProjects\AdventOfCode\day11\input.txt C:\Users\kyler\Documents\RustProjects\AdventOfCode\day11\src\main.rs
