@@ -1,4 +1,6 @@
 #![feature(drain_filter)]
+
+use std::{thread::{ScopedJoinHandle, self}, num};
 #[derive(Debug, Clone, Copy)]
 struct Range {
     pub start: isize, 
@@ -10,9 +12,6 @@ impl Range {
     }
     fn covering(&self) -> isize {
        self.end - self.start + 1 
-    }
-    fn contains(&self, n: isize) -> bool {
-        self.start <= n && n <= self.end
     }
 }
 impl std::ops::Add<Range> for Range {
@@ -37,6 +36,24 @@ fn covered_ranges_at_y(sensors_and_beacons: &Vec<((isize, isize), (isize, isize)
     ranges
 }
 
+fn find_first_uncovered(ranges: &mut Vec<Range>, domain: std::ops::RangeInclusive<isize>) -> Option<isize> {
+    ranges.sort_by(|a, b| a.start.cmp(&b.start));
+    for range in ranges.iter() {
+        if domain.contains(&(range.end + 1)) {
+            return Some(range.end + 1)
+        }
+    }
+    None
+}
+
+fn find_tuning_frequency_in_range(sensors_and_beacons: &Vec<((isize, isize), (isize, isize))>, domain: std::ops::RangeInclusive<isize>) -> Option<isize> {
+    let part2_ranges = domain.map(|y| (y, covered_ranges_at_y(&sensors_and_beacons, y.clone()))).find(|(_, v)| v.len() > 1);
+    if let Some((y, mut r)) = part2_ranges {
+        return Some(find_first_uncovered(&mut r, 0..=4_000_000).unwrap() * 4_000_000 + y);
+    }
+    None
+}
+
 fn main() {
     let now = std::time::Instant::now();
     let input = include_str!("../input.txt");
@@ -51,8 +68,23 @@ fn main() {
         };
         sensors_and_beacons.push(sb);
     }
+
     let part1 = covered_ranges_at_y(&sensors_and_beacons, 2_000_000).iter().map(|r| r.covering()).sum::<isize>() - 1;
-    let (part2_y, part2_range) = (0..=4_000_000).map(|y| (y, covered_ranges_at_y(&sensors_and_beacons, y))).find(|(_, v)| v.len() > 1).unwrap();
-    let part2_x = (0..=4_000_000).find(|n| !part2_range.iter().any(|r| r.contains(*n))).unwrap();
-    println!("Part 1: {part1}, Part2: {} in {:#?}", part2_x * 4_000_000 + part2_y, now.elapsed());
+
+    let mut part2 = 0;
+    let nums: Vec<isize> = (0..=4_000_000).collect();
+    thread::scope(|s| {
+        let mut handles: Vec<ScopedJoinHandle<Option<isize>>> = Vec::with_capacity(12);
+        for num_range in nums.chunks(33333) {
+            handles.push(s.spawn(|| find_tuning_frequency_in_range(&sensors_and_beacons, num_range[0]..=num_range[num_range.len() - 1])));
+        }
+        
+        for handle in handles {
+            if let Some(freq) = handle.join().unwrap() {
+                part2 = freq;
+                break;
+            }
+        }
+    });
+    println!("Part 1: {part1}, Part2: {part2}, in {:#?}", now.elapsed());
 }
