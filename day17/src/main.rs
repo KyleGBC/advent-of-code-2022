@@ -1,4 +1,7 @@
-#[derive(Debug)]
+use std::collections::{HashMap, VecDeque};
+
+const GRID_HEIGHT: usize = 10_000;
+#[derive(Debug, PartialEq, Eq, Hash)]
 enum Shape{ Plus, L, Horizontal, Square, Vertical }
 impl Shape { 
     fn from_num(n: usize) -> Shape { match n { 1 => Shape::Horizontal, 2 => Shape::Plus, 3 => Shape::L, 4 => Shape::Vertical, 5 => Shape::Square, _ => panic!() } } 
@@ -11,7 +14,7 @@ impl Rock {
     fn new(shape: Shape, y: usize) -> Rock {
         Rock {shape, x: 2, y}
     }
-    fn push_left(&mut self, grid: &[[bool; 10000]; 7]) {
+    fn push_left(&mut self, grid: &[[bool; GRID_HEIGHT]; 7]) {
         if self.x > 0 {
             match self.shape {
                 Shape::Vertical => if !(0..4).any(|n| grid[self.x - 1][self.y + n]) {self.x -= 1}
@@ -22,7 +25,7 @@ impl Rock {
             }
         }
     }
-    fn push_right(&mut self, grid: &[[bool; 10000]; 7]) {
+    fn push_right(&mut self, grid: &[[bool; GRID_HEIGHT]; 7]) {
         let w = self.shape.width();
         if self.x + w < 7 {
             match self.shape {
@@ -34,7 +37,7 @@ impl Rock {
             }
         }
     }
-    fn fall(&mut self, grid: &[[bool; 10000]; 7]) -> bool {
+    fn fall(&mut self, grid: &[[bool; GRID_HEIGHT]; 7]) -> bool {
         if self.y == 1 {
             false
         }
@@ -48,7 +51,7 @@ impl Rock {
             }
         }
     }
-    fn add_to_grid(&self, grid: &mut[[bool; 10000]; 7]) {
+    fn add_to_grid(&self, grid: &mut[[bool; GRID_HEIGHT]; 7]) {
         match self.shape {
             Shape::Vertical => (0..4).for_each(|n| grid[self.x][self.y + n] = true),
             Shape::Horizontal => (0..4).for_each(|n| grid[self.x + n][self.y] = true),
@@ -59,44 +62,55 @@ impl Rock {
     }
 }
 
-fn draw_grid(grid: &[[bool; 10000]; 7]) {
-    for y in (1..22).rev() {
-        for x in 0..7 {
-            let c = if grid[x][y] { '#' } else { '.' };
-            print!("{c}");
-        }
-        println!()
-    }
-}
+
 fn main() {
     let now = std::time::Instant::now();
     let input = include_str!("../input.txt");
-    println!("{}", input.chars().count());
-    let mut jets = input.chars().cycle();
-    let mut grid = [[false; 10000]; 7];
+    let mut jets = input.chars().enumerate().cycle();
+    let mut grid = [[false; GRID_HEIGHT]; 7];
     
-    let mut highest_point = 0;
-    let mut rock_count = 0_usize;
+    let mut seen_states: HashMap<(VecDeque<[bool; 7]>, usize, Shape), (usize, usize)> = HashMap::with_capacity(10000);
+    let mut previous_floors: VecDeque<[bool; 7]> = VecDeque::new();
 
-    for shape in (1..=5).cycle().map(|n| Shape::from_num(n)) {
+    let mut highest_point = 0;
+    let mut cycle_mod = 0;
+    let mut rock_count = 0_usize;
+    'outer: for shape in (1..=5).cycle().map(|n| Shape::from_num(n)) {
         let mut rock = Rock::new(shape, highest_point + 4);
         loop {
-            let push_dir = jets.next();
+            let (jet_index, push_dir) = jets.next().unwrap();
             match push_dir {
-                Some('<') => { rock.push_left(&grid) },
-                Some('>') => { rock.push_right(&grid) },
+                '<' => { rock.push_left(&grid) },
+                '>' => { rock.push_right(&grid) },
                 _ => unreachable!()
             }
             if !rock.fall(&grid) {
                 rock.add_to_grid(&mut grid);
                 rock_count += 1;
                 highest_point = usize::max(highest_point, rock.y + rock.shape.height() - 1);
+
+                if cycle_mod == 0 {
+                    previous_floors.push_back([grid[0][highest_point], grid[1][highest_point], grid[2][highest_point], grid[3][highest_point], grid[4][highest_point], grid[5][highest_point], grid[6][highest_point]]);
+                    if previous_floors.len() > 100 {
+                        previous_floors.pop_front();
+                    }
+                    if let Some((prev_count, prev_highest)) = seen_states.insert((previous_floors.clone(), jet_index, rock.shape), (rock_count, highest_point)) {
+                        let jumps = (1000000000000 - rock_count) / (rock_count - prev_count);
+                        rock_count += jumps * (rock_count - prev_count);
+                        cycle_mod = jumps * (highest_point - prev_highest);
+                    }
+                }
                 break
             }
         }
         if rock_count == 2022 {
+            println!("Part 1: {highest_point}, in {:#?}", now.elapsed());
+        }
+        if rock_count == 1000000000000 {
+            println!("Part 2: {}, in {:#?} overall", highest_point + cycle_mod, now.elapsed());
             break;
         }
     }
-    println!("{highest_point}")
+
+
 }
