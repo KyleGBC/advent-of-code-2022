@@ -1,29 +1,12 @@
-use std::{collections::{HashMap, HashSet, VecDeque}, time::Instant };
+use std::{collections::{HashMap, HashSet, VecDeque}, time::Instant, hash::BuildHasherDefault };
+use hashers::fx_hash::FxHasher;
 
 #[derive(PartialEq, Eq, Debug)]
 enum Mat { Lava, Air }
 type Coord = (i32, i32, i32);
+type FxHash = BuildHasherDefault<FxHasher>;
 
-fn part1(data: &HashMap<Coord, Mat>) -> i32 {
-    let mut total = 0;
-    for (coord, mat) in data {
-        if mat == &Mat::Air { continue }
-
-        let mut surface_area = 6;
-        let (x, y, z) = *coord;
-
-        if data.get(&(x + 1, y, z)) == Some(&Mat::Lava) { surface_area -= 1 }
-        if data.get(&(x - 1, y, z)) == Some(&Mat::Lava) { surface_area -= 1 }
-        if data.get(&(x, y + 1, z)) == Some(&Mat::Lava) { surface_area -= 1 }
-        if data.get(&(x, y - 1, z)) == Some(&Mat::Lava) { surface_area -= 1 }
-        if data.get(&(x, y, z + 1)) == Some(&Mat::Lava) { surface_area -= 1 }
-        if data.get(&(x, y, z - 1)) == Some(&Mat::Lava) { surface_area -= 1 }
-        total += surface_area
-    }
-    total
-}
-
-fn get_adjacent(data: &HashMap<Coord, Mat>, root: Coord) -> Vec<Coord> {
+fn get_adjacent(data: &HashMap<Coord, Mat, FxHash>, root: Coord) -> Vec<Coord> {
     let mut ret = Vec::with_capacity(6);
     let (x, y, z) = root;
 
@@ -37,10 +20,10 @@ fn get_adjacent(data: &HashMap<Coord, Mat>, root: Coord) -> Vec<Coord> {
     ret
 }
 
-fn is_exterior_air(data: &HashMap<Coord, Mat>, root: Coord) -> bool {
+fn is_exterior_air(data: &HashMap<Coord, Mat, FxHash>, root: Coord) -> bool {
     if data.get(&root) == Some(&Mat::Lava) { return false }
 
-    let mut exploration: HashSet<Coord> = HashSet::with_capacity(20_000);
+    let mut exploration: HashSet<Coord, FxHash> = HashSet::with_capacity_and_hasher(20_000, FxHash::default());
     let mut queue: VecDeque<Coord> = VecDeque::with_capacity(20_000);
 
     exploration.insert(root);
@@ -61,21 +44,23 @@ fn is_exterior_air(data: &HashMap<Coord, Mat>, root: Coord) -> bool {
     false
 }
 
-fn part2(data: &HashMap<Coord, Mat>) -> i32 {
+fn part1(data: &HashMap<Coord, Mat, FxHash>) -> i32 {
+    let mut total: i32 = 0;
+    for (coord, mat) in data {
+        if mat == &Mat::Air { continue }
+        total += get_adjacent(data, *coord).len() as i32
+    }
+    total
+}
+
+fn part2(data: &HashMap<Coord, Mat, FxHash>) -> i32 {
     let mut total = 0;
     for (coord, mat) in data {
         if mat == &Mat::Air { continue }
-
-        let mut surface_area = 0;
-        let (x, y, z) = *coord;
-
-        if is_exterior_air(data, (x + 1, y, z)) { surface_area += 1 }
-        if is_exterior_air(data, (x - 1, y, z)) { surface_area += 1 }
-        if is_exterior_air(data, (x, y + 1, z)) { surface_area += 1 }
-        if is_exterior_air(data, (x, y - 1, z)) { surface_area += 1 }
-        if is_exterior_air(data, (x, y, z + 1)) { surface_area += 1 }
-        if is_exterior_air(data, (x, y, z - 1)) { surface_area += 1 }
-        total += surface_area;
+    
+        for adj in get_adjacent(data, *coord) {
+            if is_exterior_air(data, adj) { total += 1 }
+        }
     }
     total
 }
@@ -83,7 +68,7 @@ fn part2(data: &HashMap<Coord, Mat>) -> i32 {
 fn main() {
     let time = Instant::now();
     let input = include_str!("../input.txt");
-    let mut data: HashMap<Coord, Mat> = HashMap::with_capacity(100);
+    let mut data: HashMap<Coord, Mat, FxHash> = HashMap::with_capacity_and_hasher(100, FxHash::default());
 
     // Get all the lava points
     for line in input.lines() {
