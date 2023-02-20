@@ -1,3 +1,4 @@
+use std::{cell::RefCell, rc::Rc};
 fn ceil_div(a: i32, b: i32) -> i32 { if a <= 0 { return 0 } else { return a / b + if a % b > 0 { 1 } else { 0 } } }
 
 #[derive(Debug, Default, Clone)]
@@ -41,16 +42,16 @@ impl State {
         ret.ore_bots = 1;
         ret
     }
-    fn maximum_geodes(&self) -> i32 {
-        let mut max = 0;
+    fn maximum_geodes(&self, max_geodes: Rc<RefCell<i32>>) -> i32 {
         for s in self.child_states() {
             let upper_bound = s.geo + (s.time * s.geo_bots) + (s.time)*(s.time - 1)/2; 
-            if max > upper_bound { continue };
+            if *max_geodes.borrow() > upper_bound { continue };
 
-            let geo = if s.time == 0 { s.geo } else { s.maximum_geodes() };
-            max = max.max(geo)
+            let mut geo = if s.time == 0 { s.geo } else { s.maximum_geodes(max_geodes.clone()) };
+            geo = geo.max(*max_geodes.borrow());
+            *max_geodes.borrow_mut() = geo;
         }
-        max
+        max_geodes.borrow().clone()
     }
     fn child_states(&self) -> Vec<State> {
         let mut ret = Vec::with_capacity(4);
@@ -71,8 +72,6 @@ impl State {
                 ret.push(self.construct_ore(time))
             }
         }
-
-
 
         if ret.is_empty() { ret.push(self.last_minutes()) }
 
@@ -146,13 +145,18 @@ fn main() {
     let part1: i32 = input.lines().map(|l| {
         let bp = Blueprint::from_str(l);
         let initial = State::new(bp.clone(), 24);
-        (initial.maximum_geodes(), bp.id)
+        let max_so_far = Rc::new(RefCell::new(0));
+        
+        (initial.maximum_geodes(max_so_far), bp.id)
     }).map(|(g, id)| g * id).sum();
 
     let part2 = input.lines().take(3).map(|l| {
         let bp = Blueprint::from_str(l);
         let initial = State::new(bp.clone(), 32);
-        initial.maximum_geodes()
+
+        let max_so_far = Rc::new(RefCell::new(0));
+
+        initial.maximum_geodes(max_so_far)
     }).fold(1, |acc, g| acc * g);
 
     println!("Part 1 is {}, Part 2 is {} in {:#?}", part1, part2, now.elapsed());
