@@ -1,5 +1,5 @@
 use std::{cell::RefCell, rc::Rc};
-fn ceil_div(a: i32, b: i32) -> i32 { if a <= 0 { return 0 } else { return a / b + if a % b > 0 { 1 } else { 0 } } }
+fn ceil_div(a: i32, b: i32) -> i32 { if a <= 0 { 0 } else { a / b + i32::from(a % b > 0) } }
 
 #[derive(Debug, Default, Clone)]
 struct Blueprint {
@@ -36,11 +36,7 @@ struct State {
 }
 impl State {
     fn new(bp: Blueprint, time: i32) -> Self {
-        let mut ret = State::default();
-        ret.blueprint = bp;
-        ret.time = time;
-        ret.ore_bots = 1;
-        ret
+        State { time, blueprint: bp, ore_bots: 1, ..Default::default() }
     }
     fn maximum_geodes(&self, max_geodes: Rc<RefCell<i32>>) -> i32 {
         for s in self.child_states() {
@@ -51,12 +47,14 @@ impl State {
             geo = geo.max(*max_geodes.borrow());
             *max_geodes.borrow_mut() = geo;
         }
-        max_geodes.borrow().clone()
+        *max_geodes.borrow()
     }
     fn child_states(&self) -> Vec<State> {
         let mut ret = Vec::with_capacity(4);
 
-        if let Some(time) = self.geo_time() { ret.push(self.construct_geo(time)) }
+        if let Some(time) = self.geo_time() { 
+            ret.push(self.construct_geo(time))
+        }
         if let Some(time) = self.obi_time() { 
             if self.obi_bots < self.blueprint.geo_obi_cost {
                 ret.push(self.construct_obi(time))
@@ -79,7 +77,7 @@ impl State {
     }
     fn ore_time(&self) -> Option<i32> {
         let time_taken = ceil_div(self.blueprint.ore_ore_cost - self.ore, self.ore_bots) + 1;
-        return if time_taken >= self.time { Option::None } else { Option::Some(time_taken) }
+        if time_taken >= self.time { None } else { Some(time_taken) }
     }
     fn construct_ore(&self, time_taken: i32) -> State { 
         let ore = self.ore + self.ore_bots * time_taken - self.blueprint.ore_ore_cost;
@@ -91,7 +89,7 @@ impl State {
     }
     fn clay_time(&self) -> Option<i32> {
         let time_taken = ceil_div(self.blueprint.clay_ore_cost - self.ore,  self.ore_bots) + 1;
-        return if time_taken >= self.time { Option::None } else { Option::Some(time_taken) }
+        if time_taken >= self.time { None } else { Some(time_taken) }
     }
     fn construct_clay(&self, time_taken: i32) -> State { 
         let ore = self.ore + self.ore_bots * time_taken - self.blueprint.clay_ore_cost;
@@ -108,7 +106,7 @@ impl State {
         let time2 = ceil_div(self.blueprint.obi_clay_cost - self.clay, self.clay_bots) + 1;
         let time_taken = i32::max(time1, time2);
 
-        return if time_taken >= self.time { Option::None } else { Option::Some(time_taken) }
+        if time_taken >= self.time { None } else { Some(time_taken) }
     }
     fn construct_obi(&self, time_taken: i32) -> State { 
         let ore = self.ore + self.ore_bots * time_taken - self.blueprint.obi_ore_cost;
@@ -125,7 +123,7 @@ impl State {
         let time2 = ceil_div(self.blueprint.geo_obi_cost - self.obi, self.obi_bots) + 1;
         let time_taken = i32::max(time1, time2);
 
-        return if time_taken >= self.time { Option::None } else { Option::Some(time_taken) }
+        if time_taken >= self.time { None } else { Some(time_taken) }
     }
     fn construct_geo(&self, time_taken: i32) -> State { 
         let ore = self.ore + self.ore_bots * time_taken - self.blueprint.geo_ore_cost;
@@ -150,14 +148,13 @@ fn main() {
         (initial.maximum_geodes(max_so_far), bp.id)
     }).map(|(g, id)| g * id).sum();
 
-    let part2 = input.lines().take(3).map(|l| {
+    let part2: i32 = input.lines().take(3).map(|l| {
         let bp = Blueprint::from_str(l);
-        let initial = State::new(bp.clone(), 32);
-
+        let initial = State::new(bp, 32);
         let max_so_far = Rc::new(RefCell::new(0));
 
         initial.maximum_geodes(max_so_far)
-    }).fold(1, |acc, g| acc * g);
+    }).product();
 
     println!("Part 1 is {}, Part 2 is {} in {:#?}", part1, part2, now.elapsed());
 }
