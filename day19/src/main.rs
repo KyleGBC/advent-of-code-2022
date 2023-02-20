@@ -55,9 +55,10 @@ impl State {
     fn child_states(&self) -> Vec<State> {
         let mut ret = Vec::with_capacity(4);
 
-        if let Some(time) = self.ore_time() {
-            if self.ore_bots < (self.blueprint.ore_ore_cost.max(self.blueprint.clay_ore_cost).max(self.blueprint.geo_ore_cost).max(self.blueprint.obi_ore_cost)) {
-                ret.push(self.construct_ore(time))
+        if let Some(time) = self.geo_time() { ret.push(self.construct_geo(time)) }
+        if let Some(time) = self.obi_time() { 
+            if self.obi_bots < self.blueprint.geo_obi_cost {
+                ret.push(self.construct_obi(time))
             }
         }
         if let Some(time) = self.clay_time() { 
@@ -65,12 +66,13 @@ impl State {
                 ret.push(self.construct_clay(time)) 
             } 
         }
-        if let Some(time) = self.obi_time() { 
-            if self.obi_bots < self.blueprint.geo_obi_cost {
-                ret.push(self.construct_obi(time))
+        if let Some(time) = self.ore_time() {
+            if self.ore_bots < (self.blueprint.ore_ore_cost.max(self.blueprint.clay_ore_cost).max(self.blueprint.geo_ore_cost).max(self.blueprint.obi_ore_cost)) {
+                ret.push(self.construct_ore(time))
             }
         }
-        if let Some(time) = self.geo_time() { ret.push(self.construct_geo(time)) }
+
+
 
         if ret.is_empty() { ret.push(self.last_minutes()) }
 
