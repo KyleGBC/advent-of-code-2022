@@ -1,66 +1,75 @@
 use std::collections::HashMap;
 
-#[derive(Clone)]
-pub enum Op { Add, Sub, Mul, Div }
-#[derive(Clone)]
-pub struct YellOp { operation: Op, oper_1: String, oper_2: String }
-#[derive(Clone)]
-pub enum Yell { Imm(i128), Op(YellOp) }
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum Op { Add, Sub, Mul, Div }
+impl Op { fn perform_op(&self, a: i64, b: i64) -> i64 { match self { Op::Add => a + b, Op::Sub => a - b, Op::Mul => a * b, Op::Div => a / b } } }
+#[derive(Debug, PartialEq)]
+enum Yell { Imm(i64), Parent(Box<(Yell, Op, Yell)>), Str(String, Op, String) }
 impl Yell {
-    fn from_string(s: &str) -> (String, Yell) {
-        let (id, rem) = s.split_once(": ").unwrap();
-        if rem.contains(|c| char::is_numeric(c)) {
-            (String::from(id), Yell::Imm(rem.parse().unwrap()))
+    fn from_str(s: &str) -> Self {
+        if s.chars().filter(|c| c.is_numeric()).count() != 0 {
+            Yell::Imm(s.parse::<i64>().unwrap())
         }
         else {
-            let mut op_string = rem.splitn(3, ' ');
-            let oper_1 = op_string.next().unwrap().to_string();
-            let operation = match op_string.next().unwrap() { "+" => Op::Add, "-" => Op::Sub, "*" => Op::Mul, "/" => Op::Div, _ => unreachable!("Not a valid math operation") };
-            let oper_2 = op_string.next().unwrap().to_string();
-            (String::from(id), Yell::Op(YellOp { operation, oper_1, oper_2 }))
+            let args = s.split_whitespace().collect::<Vec<_>>();
+            let o = match args[1] {
+                "+" => Op::Add,
+                "-" => Op::Sub,
+                "*" => Op::Mul,
+                "/" => Op::Div, 
+                _ => unreachable!("\"{}\" is not a valid math operator", args[1])
+            };
+            Yell::Str(args[0].to_string(), o, args[2].to_string())
         }
     }
-    fn value(&self) -> Option<i128> { match self { Self::Imm(n) => Some(*n), Self::Op(_) => None }}
-}
-
-fn check_op_complete(monkeys: &mut HashMap<String, Yell>, monkey_id: &String, op: &YellOp) {
-    let YellOp{operation, oper_1, oper_2, ..} = op;
-    if let (Yell::Imm(a), Yell::Imm(b)) = (monkeys.get(oper_1).unwrap(), monkeys.get(oper_2).unwrap()) {
-        let (a, b) = (*a, *b);
-        let y = monkeys.get_mut(monkey_id).unwrap();
-        *y = match operation {
-            Op::Add => Yell::Imm(a + b),
-            Op::Sub => Yell::Imm(a - b),
-            Op::Mul => Yell::Imm(a * b),
-            Op::Div => Yell::Imm(a / b)
-        }  
+    fn is_str(&self) -> bool { match self { &Yell::Str(..) => true, _ => false }}
+    fn is_parent(&self) -> bool { match self {&Yell::Parent(..) => true, _ => false }}
+    fn value(&self) -> i64 {
+        match self {
+            Yell::Str(..) => panic!("Can't take the value of unlinked Yell"),
+            Yell::Imm(n) => *n, 
+            Yell::Parent(b) => { b.1.perform_op(b.0.value(), b.2.value()) }
+        }
     }
 }
-fn part1(input: &str) -> i128 {
-    let mut monkeys: HashMap<String, Yell> = HashMap::with_capacity(input.lines().count());
-    let mut monkey_names: Vec<String> = Vec::with_capacity(monkeys.len());
 
-    for line in input.lines() {
-        let (monkey_id, yell) = Yell::from_string(line);
-        monkeys.insert(monkey_id.clone(), yell);
-        monkey_names.push(monkey_id)
-    }
-
-    while let Yell::Op(_) = monkeys.get(&String::from("root")).unwrap() {
-        for id in monkey_names.iter() {
-            if let Yell::Op(op) = monkeys.get(id).unwrap().clone() {
-                check_op_complete(&mut monkeys, &id, &op);
+fn attach_branches(known_values: &mut HashMap<String, Yell>, id: &String) {
+    if let Some(mut old_yell) = known_values.remove(id) {
+        if let Yell::Str(oper_1, op, oper_2) = &old_yell {
+            if let (Some(yell_1), Some(yell_2)) = (known_values.remove(oper_1), known_values.remove(oper_2)) {
+                if !yell_1.is_str() && !yell_2.is_str() {
+                    old_yell = Yell::Parent(Box::new((yell_1, *op, yell_2)));
+                }
+                else {
+                    known_values.insert(oper_1.clone(), yell_1);
+                    known_values.insert(oper_2.clone(), yell_2);
+                }
             }
         }
+        known_values.insert(id.to_owned(), old_yell);   
     }
-    monkeys.get(&String::from("root")).unwrap().value().unwrap()
 }
 
 fn main() {
     let now = std::time::Instant::now();
     let input = include_str!("../input.txt");
     
+    let mut known_values: HashMap<String, Yell> = HashMap::with_capacity(input.lines().count());
 
-    let part1 = part1(input.clone());
+    for line in input.lines() {
+        let (id, yell_str) = line.split_once(": ").unwrap();
+        let id = String::from(id);
+        known_values.insert(id, Yell::from_str(yell_str));
+    }
+    let monkey_ids = known_values.keys().cloned().collect::<Vec<_>>();
+
+    loop {
+        if known_values.get(&String::from("root")).unwrap().is_parent() { break }
+        for id in monkey_ids.iter() {
+            attach_branches(&mut known_values, id);
+        }
+    }
+    let root = known_values.remove(&String::from("root")).unwrap();
+    let part1 = root.value();
     println!("Part 1: {part1}, in {:#?}", now.elapsed());
-}   
+}
