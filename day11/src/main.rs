@@ -12,7 +12,7 @@ impl Monkey{
                 WorryOp::Mul(m) => i * m,
                 WorryOp::Square => i * i,
             };
-            if let Some(m) = modulo {  i = i % m } else { i = i / 3 };
+            if let Some(m) = modulo {  i %= m } else { i /= 3 };
             self.inspected += 1;
             if i % self.div == 0 { (self.t_monkey, i ) } else { (self.f_monkey, i) }
         }).collect()
@@ -35,15 +35,15 @@ fn main() {
 
     let mut id = 0_usize;
     for line in input.lines() {
-        match line.trim().split([' ']).collect::<Vec<&str>>().as_slice() {
-            &["Monkey", i] => id = i[..1].parse::<usize>().unwrap(),
-            &["Test:", .., d] => monkeys[id].div = d.parse::<u64>().unwrap(),
-            &["If", "true:", .., t] => monkeys[id].t_monkey = t.parse::<usize>().unwrap(),
-            &["If", "false:", .., f] => monkeys[id].f_monkey = f.parse::<usize>().unwrap(),
-            &["Operation:", .., "*", "old"] => monkeys[id].op = WorryOp::Square,
-            &["Operation:", .., "*", n] => monkeys[id].op = WorryOp::Mul(n.parse::<u64>().unwrap()),
-            &["Operation:", .., "+", n] => monkeys[id].op = WorryOp::Add(n.parse::<u64>().unwrap()),
-            &["Starting", ..] => monkeys[id].items = line.split_once(": ").unwrap().1.split(", ").filter_map(|n| n.parse::<u64>().ok()).collect(),
+        match *line.trim().split([' ']).collect::<Vec<&str>>().as_slice() {
+            ["Monkey", i] => id = i[..1].parse::<usize>().unwrap(),
+            ["Test:", .., d] => monkeys[id].div = d.parse::<u64>().unwrap(),
+            ["If", "true:", .., t] => monkeys[id].t_monkey = t.parse::<usize>().unwrap(),
+            ["If", "false:", .., f] => monkeys[id].f_monkey = f.parse::<usize>().unwrap(),
+            ["Operation:", .., "*", "old"] => monkeys[id].op = WorryOp::Square,
+            ["Operation:", .., "*", n] => monkeys[id].op = WorryOp::Mul(n.parse::<u64>().unwrap()),
+            ["Operation:", .., "+", n] => monkeys[id].op = WorryOp::Add(n.parse::<u64>().unwrap()),
+            ["Starting", ..] => monkeys[id].items = line.split_once(": ").unwrap().1.split(", ").filter_map(|n| n.parse::<u64>().ok()).collect(),
             _ => {},
         }
     }

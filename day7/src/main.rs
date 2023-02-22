@@ -11,7 +11,7 @@ impl Node {
         let mut new_node = Node{ children: Vec::new(), name: "/".to_string(), size: None};
 
         while let Some(line) = lines.next() {
-            if line.starts_with("$") {
+            if line.starts_with('$') {
                 let line = &line[2..];
                 if let Some((cmd, name)) = line.split_once(' ') {
                     match(cmd, name) {
@@ -37,14 +37,11 @@ impl Node {
         new_node
     }
 
-    fn size(&self, mut prefix: String, node_sizes: &mut Vec<usize>) -> usize {
+    fn size(&self, prefix: String, node_sizes: &mut Vec<usize>) -> usize {
         if let Some(s) = self.size {
-            //println!("{}{} (file, size = {})", prefix, self.name, s);
             s
         }
         else {
-            //println!("{}{} (dir)", prefix, self.name);
-            //prefix.insert(0, '\t');
             let s = self.children.iter().fold(0, |sum, n| sum + n.size(prefix.clone(), node_sizes));
             node_sizes.push(s);
             s

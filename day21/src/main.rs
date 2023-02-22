@@ -24,8 +24,6 @@ impl Yell {
             Yell::Str(args[0], o, args[2])
         }
     }
-    fn is_str(&self) -> bool { match self { &Yell::Str(..) => true, _ => false }}
-    fn is_parent(&self) -> bool { match self {&Yell::Parent(..) => true, _ => false }}
     fn value(&self) -> i64 {
         match self {
             Yell::Str(..) => panic!("Can't take the value of unlinked Yell"),
@@ -39,7 +37,7 @@ fn attach_branches(known_values: &mut HashMap<&str, Yell, FxHash>, id: &str) {
     if let Some(Yell::Str(oper_1, op, oper_2)) = known_values.get(id) {
         let (oper_1, op, oper_2) = (*oper_1, *op, *oper_2);
         let (yell_1, yell_2) = (known_values.remove(oper_1).unwrap(), known_values.remove(oper_2).unwrap());
-        if !yell_1.is_str() && !yell_2.is_str() {
+        if !matches!(yell_1, Yell::Str(..)) && !matches!(yell_2, Yell::Str(..)) {
             *known_values.get_mut(id).unwrap() = Yell::Parent(Box::new((yell_1, op, yell_2)));
         }
         else {
@@ -62,12 +60,14 @@ fn main() {
     let monkey_ids = known_values.keys().cloned().collect::<Vec<_>>();
 
     loop {
-        if known_values.get("root").unwrap().is_parent() { break }
+        if matches!(known_values.get("root").unwrap(), Yell::Parent(..)) { break }
         for id in monkey_ids.iter() {
             attach_branches(&mut known_values, id);
         }
     }
     let root = known_values.remove("root").unwrap();
+
     let part1 = root.value();
+
     println!("Part 1: {part1}, in {:#?}", now.elapsed());
 }

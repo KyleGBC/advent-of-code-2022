@@ -1,7 +1,7 @@
-fn visible_trees<'a>(mut it: impl Iterator<Item = &'a u8>, tree_height: u8) -> (usize, bool) {
+fn visible_trees<'a>(it: impl Iterator<Item = &'a u8>, tree_height: u8) -> (usize, bool) {
     let mut total = 0;
     let mut seen_from_edge = true;
-    while let Some(tree) = it.next() {
+    for tree in it {
         total += 1;
         if *tree >= tree_height {
             seen_from_edge = false;

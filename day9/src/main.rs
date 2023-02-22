@@ -5,8 +5,8 @@ use hashers::fx_hash::FxHasher;
 fn update_knot(leader: (i32, i32), follower: &mut (i32, i32)) {
     let (x_dist, y_dist) = (leader.0 - follower.0, leader.1 - follower.1);
     if x_dist.abs() > 1 || y_dist.abs() > 1 {
-        follower.0 += 1 * x_dist.signum();
-        follower.1 += 1 * y_dist.signum();
+        follower.0 += x_dist.signum();
+        follower.1 += y_dist.signum();
     }
 }
 
@@ -27,7 +27,7 @@ fn run_with_n_knots<const N: usize>(lines: std::str::Lines) -> (usize, usize) {
                 _ => unreachable!(),
             }
             for l in 0..N - 1 {
-                update_knot(knot_positions[l as usize], &mut knot_positions[l + 1 as usize]);
+                update_knot(knot_positions[l], &mut knot_positions[l + 1_usize]);
             }
             tail_positions.insert(knot_positions[N - 1]);
             behind_head_positions.insert(knot_positions[1]);

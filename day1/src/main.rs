@@ -19,5 +19,5 @@ fn main() {
     summed_calories.sort_unstable();
     summed_calories = summed_calories.into_iter().rev().collect();
     summed_calories.truncate(3);
-    println!("Calories from the top 3 elves: {}", summed_calories.iter().fold(0, |sum, x| sum + x));
+    println!("Calories from the top 3 elves: {}", summed_calories.iter().sum::<i32>());
 }

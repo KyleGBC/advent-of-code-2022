@@ -1,10 +1,10 @@
-use std::{collections::HashMap, ops::Index};
+use std::collections::HashMap;
 type ValveLabel = (usize, usize);
 struct Valve { pub flow_rate: usize, pub tunnels: Vec<(usize, usize)> }
 
 fn flow(all_valves: &HashMap<ValveLabel, Valve>, mut remaining_valves: Vec<ValveLabel>, distances: &HashMap<ValveLabel, HashMap<ValveLabel, usize>>, current: ValveLabel, time: usize) -> usize {    remaining_valves.swap_remove(remaining_valves.iter().position(|v| *v == current).unwrap());
     if time <= 2 {
-        return all_valves[&current].flow_rate * (time - 1);
+         all_valves[&current].flow_rate * (time - 1)
     }
     else if let Some(d) = distances.get(&current) {
         d.iter().filter(|m| remaining_valves.contains(m.0) && all_valves[m.0].flow_rate > 0).map(|m| {
@@ -32,7 +32,7 @@ fn dijkstra(grid: &HashMap<ValveLabel, Valve>, start: ValveLabel) -> HashMap<Val
     *dis.get_mut(&start).unwrap() = 0;
 
     while q.values().any(|n| *n) {
-        let cur_pos = grid.keys().filter(|k| q[*k]).min_by(|a, b| dis[a].cmp(&dis[b])).unwrap().clone();
+        let cur_pos = *grid.keys().filter(|k| q[*k]).min_by(|a, b| dis[a].cmp(&dis[b])).unwrap();
         *q.get_mut(&cur_pos).unwrap() = false;
 
         let neighbors: Vec<ValveLabel> = grid[&cur_pos].tunnels.clone().into_iter().filter(|n| q[n]).collect();
@@ -55,7 +55,7 @@ fn main() {
         let (valve, rest) = line.split_once(';').unwrap();
         let flow_rate = valve[valve.find('=').unwrap() + 1..].parse::<usize>().unwrap();
         let name = (valve.chars().nth(6).unwrap() as usize, valve.chars().nth(7).unwrap() as usize);
-        let tunnels: Vec<(usize, usize)> = rest.split(|c: char| c.is_lowercase() || c == ',' || c == ' ').filter(|s| !s.is_empty()).map(|s| (s.chars().nth(0).unwrap() as usize, s.chars().nth(1).unwrap() as usize) ).collect();
+        let tunnels: Vec<(usize, usize)> = rest.split(|c: char| c.is_lowercase() || c == ',' || c == ' ').filter(|s| !s.is_empty()).map(|s| (s.chars().next().unwrap() as usize, s.chars().nth(1).unwrap() as usize) ).collect();
         valves.insert(name, Valve { flow_rate, tunnels } );
     }
     
@@ -66,7 +66,7 @@ fn main() {
     }
 
 
-    let part1 = flow(&valves, valves.keys().map(|k| *k).collect(), &distances, (65, 65), 30);
+    let part1 = flow(&valves, valves.keys().copied().collect(), &distances, (65, 65), 30);
     println!("{part1}, in {:#?}", parse_time.elapsed());
 
 

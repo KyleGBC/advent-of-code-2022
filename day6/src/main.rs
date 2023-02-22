@@ -1,5 +1,5 @@
-fn characters_to_get_n_distinct(chars: &Vec<char>, window_size: usize) -> usize {
-    &chars[..].windows(window_size).enumerate().find(|(_, w)|  {
+fn characters_to_get_n_distinct(chars: &[char], window_size: usize) -> usize {
+    chars[..].windows(window_size).enumerate().find(|(_, w)|  {
         !(1..w.len()).any(|i| w[i..].contains(&w[i - 1]))
     }).expect("No unique set found").0 + window_size
 }

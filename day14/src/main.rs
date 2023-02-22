@@ -43,7 +43,7 @@ fn main() {
     }
 
     let lowest = rocks.iter().map(|c| c.iter().enumerate().filter(|(_, f)| **f).map(|(i, _)| i).max().unwrap_or(0)).max().unwrap();
-    let part1 = simulate_sand(rocks.clone(), lowest, false);
+    let part1 = simulate_sand(rocks, lowest, false);
     let part2 =  simulate_sand(rocks, lowest, true);
 
     println!("Part 1: {part1}, Part 2: {part2} in {:#?}", now.elapsed());

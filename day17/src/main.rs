@@ -1,4 +1,5 @@
 use std::collections::{HashMap, VecDeque};
+type State = (VecDeque<[bool; 7]>, usize, Shape);
 
 const GRID_HEIGHT: usize = 10_000;
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -69,13 +70,13 @@ fn main() {
     let mut jets = input.chars().enumerate().cycle();
     let mut grid = [[false; GRID_HEIGHT]; 7];
     
-    let mut seen_states: HashMap<(VecDeque<[bool; 7]>, usize, Shape), (usize, usize)> = HashMap::with_capacity(10000);
+    let mut seen_states: HashMap<State, (usize, usize)> = HashMap::with_capacity(10000);
     let mut previous_floors: VecDeque<[bool; 7]> = VecDeque::new();
 
     let mut highest_point = 0;
     let mut cycle_mod = 0;
     let mut rock_count = 0_usize;
-    'outer: for shape in (1..=5).cycle().map(|n| Shape::from_num(n)) {
+    for shape in (1..=5).cycle().map(Shape::from_num) {
         let mut rock = Rock::new(shape, highest_point + 4);
         loop {
             let (jet_index, push_dir) = jets.next().unwrap();

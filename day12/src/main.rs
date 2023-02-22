@@ -13,8 +13,8 @@ fn dijkstra(grid: &mut HashMap<(usize, usize), Node>, highest_point: (usize, usi
     while grid.values().any(|n| n.in_q) {
         let (cur_pos, u) = grid.iter_mut().filter(|a| a.1.in_q).min_by(|a, b| a.1.distance_from_root.cmp(&b.1.distance_from_root)).unwrap();
         let alt = u.distance_from_root.saturating_add(1);
-        let cur_pos = cur_pos.clone();
-        let cur_elevation = u.elevation.clone();
+        let cur_pos = *cur_pos;
+        let cur_elevation = u.elevation;
         u.in_q = false;
 
         for dir in [(0, 1), (0, -1), (1, 0), (-1, 0)] {
@@ -30,7 +30,7 @@ fn dijkstra(grid: &mut HashMap<(usize, usize), Node>, highest_point: (usize, usi
 }
 fn distance(grid: &HashMap<(usize, usize), Node>, mut current_point: (usize, usize), highest_point: (usize, usize)) -> usize {
     let mut dis = 0;
-    if let Some(_) = grid.get(&current_point).unwrap().prev {
+    if grid.get(&current_point).unwrap().prev.is_some() {
         while current_point != highest_point {
             current_point = grid.get(&current_point).unwrap().prev.unwrap();
             dis += 1;

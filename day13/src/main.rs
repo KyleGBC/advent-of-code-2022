@@ -6,7 +6,7 @@ impl List {
             let s = &s[1..s.len() - 1];
             let mut children: Vec<List> = Vec::new();
             let (mut depth, mut substring_start) = (0, 0);
-            if s.len() == 0 {
+            if s.is_empty() {
                 return List::Parent(children);
             }
             for (i, char) in s.chars().enumerate() {
@@ -43,7 +43,7 @@ impl PartialOrd for List {
 fn main() {
     let now = std::time::Instant::now();
     let input = include_str!("../input.txt");
-    let mut packets: Vec<List> = input.split("\r\n").filter(|s| !s.is_empty()).map(|s| List::from_str(s)).collect();
+    let mut packets: Vec<List> = input.split("\r\n").filter(|s| !s.is_empty()).map(List::from_str).collect();
 
     let part1 = packets.iter().as_slice().chunks(2).enumerate().fold(0, |sum, (i, pair)| if let [l1, l2] = pair {
         if l1 < l2 { sum + 1 + i } else { sum }

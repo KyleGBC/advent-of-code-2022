@@ -85,7 +85,7 @@ fn main() {
     for x in -1..=(max_x+1) {
         for y in -1..=(max_y+1) {
             for z in -1..=(max_z+1) {
-                if !data.contains_key(&(x, y, z)) { data.insert((x, y, z), Mat::Air); }
+                data.entry((x, y, z)).or_insert(Mat::Air);
             }
         }
     }
