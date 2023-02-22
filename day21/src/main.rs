@@ -6,11 +6,12 @@ type FxHash = BuildHasherDefault<FxHasher>;
 enum Op { Add, Sub, Mul, Div }
 impl Op { fn perform_op(&self, a: i64, b: i64) -> i64 { match self { Op::Add => a + b, Op::Sub => a - b, Op::Mul => a * b, Op::Div => a / b } } }
 #[derive(Debug, PartialEq)]
-enum Yell { Imm(i64), Parent(Box<(Yell, Op, Yell)>), Str(&'static str, Op, &'static str) }
+enum Yell { Imm(i64), Parent(Box<(Yell, Op, Yell)>), Str(&'static str, Op, &'static str), Human(i64) }
 impl Yell {
-    fn from_str(s: &'static str) -> Self {
+    fn from_str(id: &'static str, s: &'static str) -> Self {
         if s.chars().filter(|c| c.is_numeric()).count() != 0 {
-            Yell::Imm(s.parse::<i64>().unwrap())
+            let s = s.parse::<i64>().unwrap();
+            if id == "humn" { Yell::Human(s) } else { Yell::Imm(s) }
         }
         else {
             let args = s.split_whitespace().collect::<Vec<_>>();
@@ -26,10 +27,72 @@ impl Yell {
     }
     fn value(&self) -> i64 {
         match self {
-            Yell::Str(..) => panic!("Can't take the value of unlinked Yell"),
-            Yell::Imm(n) => *n, 
+            Yell::Imm(n) | Yell::Human(n) => *n, 
             Yell::Parent(b) => { b.1.perform_op(b.0.value(), b.2.value()) }
+            Yell::Str(..) => panic!("Can't take the value of unlinked Yell"),
         }
+    }
+    fn make_immediates(&mut self) {
+        match self {
+            Yell::Parent(b) => {
+                let (lhs, op, rhs) = b.as_mut();
+                lhs.make_immediates();
+                rhs.make_immediates();
+                if let (Yell::Imm(a), Yell::Imm(b)) = (lhs, rhs) {
+                    *self = Yell::Imm(op.perform_op(*a, *b));
+                }
+            }
+            Yell::Str(..) => { panic!("Can't make immediates from an unlinked Yell")},
+            _ => {},
+        }
+    }
+    fn into_children(self) -> (Yell, Op, Yell) { if let Yell::Parent(b) = self { *b } else { panic!("attempted to get children of a non-parent") } }
+    fn undo_op(self, h: &mut i64) -> Yell {
+        let (lhs, op, rhs)  = self.into_children();
+        match op {
+            Op::Add =>{
+                let (cons, var) = if matches!(lhs, Yell::Imm(..)) { (lhs, rhs) } else { (rhs, lhs) };
+                *h -= cons.value();
+                var
+            },
+            Op::Sub => {
+                if let Yell::Imm(n) = lhs {
+                    *h = n - *h;
+                    rhs
+                }
+                else if let Yell::Imm(n) = rhs {
+                    *h += n;
+                    lhs
+                }
+                else { unreachable!() }
+            },
+            Op::Mul => {
+                let (cons, var) = if matches!(lhs, Yell::Imm(..)) { (lhs, rhs) } else { (rhs, lhs) };
+                *h /= cons.value();
+                var
+            },
+            Op::Div => {
+                if let Yell::Imm(n) = lhs {
+                    *h = n / *h;
+                    rhs
+                }
+                else if let Yell::Imm(n) = rhs {
+                    *h *= n;
+                    lhs
+                }
+                else { unreachable!() }
+            },
+        }
+    }
+    fn solve_for_humn(mut self) -> i64 {
+        self.make_immediates();
+        let (lhs, _, rhs) = self.into_children();
+        let (constant_side, mut human_side) = if matches!(lhs, Yell::Imm(..)) { (lhs, rhs) } else { (rhs, lhs) };
+        let mut h = constant_side.value();
+        while !matches!(human_side, Yell::Human(..)) {
+            human_side = human_side.undo_op(&mut h);
+        }
+        h 
     }
 }
 
@@ -55,7 +118,7 @@ fn main() {
 
     for line in input.lines() {
         let (id, yell_str) = line.split_once(": ").unwrap();
-        known_values.insert(id, Yell::from_str(yell_str));
+        known_values.insert(id, Yell::from_str(id, yell_str));
     }
     let monkey_ids = known_values.keys().cloned().collect::<Vec<_>>();
 
@@ -68,6 +131,7 @@ fn main() {
     let root = known_values.remove("root").unwrap();
 
     let part1 = root.value();
+    let part2 = root.solve_for_humn();
 
-    println!("Part 1: {part1}, in {:#?}", now.elapsed());
+    println!("Part 1: {part1}, Part 2: {part2}, in {:#?}", now.elapsed());
 }
