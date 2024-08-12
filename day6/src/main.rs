@@ -4,7 +4,8 @@ fn characters_to_get_n_distinct(chars: &[char], window_size: usize) -> usize {
     }).expect("No unique set found").0 + window_size
 }
 fn main()    {
-    let input = std::fs::read_to_string("input.txt").expect("Couldn't read in file");
+    let time = std::time::Instant::now();
+    let input = include_str!("../input.txt");
     let chars: Vec<char> = input.chars().collect();
-    println!("Part 1: {}, Part 2: {}", characters_to_get_n_distinct(&chars, 4), characters_to_get_n_distinct(&chars, 14));
+    println!("Part 1: {}, Part 2: {}, in {:#?}", characters_to_get_n_distinct(&chars, 4), characters_to_get_n_distinct(&chars, 14), time.elapsed());
 } 
