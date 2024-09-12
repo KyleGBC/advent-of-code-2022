@@ -1,5 +1,3 @@
-#![feature(drain_filter)]
-
 use std::thread::{ScopedJoinHandle, self};
 #[derive(Debug, Clone, Copy)]
 struct Range {

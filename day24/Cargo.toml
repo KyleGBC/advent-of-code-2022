@@ -1,0 +1,10 @@
+[package]
+name = "day24"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rustc-hash = "2.0.0"
+
+[profile.release]
+debug = true
